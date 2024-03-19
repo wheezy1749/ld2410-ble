@@ -56,6 +56,11 @@ class LD2410BLE:
         ble_device: BLEDevice,
         advertisement_data: AdvertisementData | None = None,
         password: bytes = CMD_BT_PASS_DEFAULT,
+        max_motion_gate: bytes = None,
+        max_sense_gate: bytes = None,
+        max_motion_sense: list[bytes] = None,
+        max_static_sense: list[bytes] = None,
+        inactivity_timer: list[bytes] = None,
     ) -> None:
         """Init the LD2410BLE."""
         self._ble_device = ble_device
@@ -70,6 +75,32 @@ class LD2410BLE:
         self._callbacks: list[Callable[[LD2410BLEState], None]] = []
         self._disconnected_callbacks: list[Callable[[], None]] = []
         self._buf = b""
+        self._set_max_motion_sense(max_motion_sense)
+        self._set_max_static_sense(max_static_sense)
+        #self._set_interval_timer(interval_timer)
+
+    def _check_user_sense_inputs(self, sense):
+        """Helper function for below set commands"""
+        if sense is None:
+            return None
+
+        if max(sense) > MAX_SENSE_VAL or min(sense) < MIN_SENSE_VAL:
+            raise ValueError(f"sensor values must be within range from {MIN_SENSE_VAL} to {MAX_SENSE_VAL}")
+
+        if len(sense) != MAX_GATES:
+            raise ValueError(f"sensor lists must contain all {MAX_GATES} gates. Found len = {len(sense)}")
+
+        return sense
+
+    def _set_max_motion_sense(self, sense : list[bytes]):
+        """called by the constructor to prepare the user friendly inputs (0-100)
+           for configuration and ensure values are in range"""
+        self._max_motion_sense = self._check_user_sense_inputs(sense)
+
+    def _set_max_static_sense(self, sense : list[bytes]):
+        """called by the constructor to prepare the user friendly inputs (0-100)
+           for configuration and ensure values are in range"""
+        self._max_static_sense = self._check_user_sense_inputs(sense)
 
     def set_ble_device_and_advertisement_data(
         self, ble_device: BLEDevice, advertisement_data: AdvertisementData
@@ -290,6 +321,8 @@ class LD2410BLE:
         await asyncio.sleep(0.1)
         await self._send_command(CMD_DISABLE_CONFIG)
         await asyncio.sleep(0.1)
+        await self._send_max_sense_cmd()
+        await asyncio.sleep(0.1)
 
         _LOGGER.debug("%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi)
         if self._client is not None:
@@ -457,6 +490,27 @@ class LD2410BLE:
             )
             await self._execute_disconnect()
             raise
+
+    async def _send_max_sense_cmd(self) -> None
+        """Send the command to set the max sensor values for all motion and static gates"""
+        await self._send_command(CMD_ENABLE_CONFIG)
+        await asyncio.sleep(0.01)
+        sense_values = zip(self._max_motion_sense, self._max_static_sense)
+
+        for gate, sense_val in enumerate(sense_values):
+            self._send_command(CMD_PREAMBLE)
+            cmd = b"\x14\x00\x64\x00\x00\x00" # Preamble
+            cmd += gate.to_bytes(1)           # Gate value
+            cmd += b"\x00\x00\x00"            # Spacer
+            cmd += b"\x01\x00"                # Motion sense command
+            cmd += sense_val[0].to_bytes(1)   # Motion sense value
+	    cmd += b"\x00\x00"                # Spacer
+            cmd += b"\x00\x02\x00"            # Static sense command
+	    cmd += sense_val[1].to_bytes(1)   # Static sense value
+	    cmd += b"\x00\x00\x00"            # Spacer
+            self._send_command(CMD_POSTAMBLE)
+
+        await self._send_command(CMD_DISABLE_CONFIG)
 
     async def _send_command(
         self, commands: list[bytes] | bytes, retry: int | None = None

@@ -1,15 +1,21 @@
 CHARACTERISTIC_NOTIFY = "0000fff1-0000-1000-8000-00805f9b34fb"
 CHARACTERISTIC_WRITE = "0000fff2-0000-1000-8000-00805f9b34fb"
 
-CMD_BT_PASS_PRE = b"\xfd\xfc\xfb\xfa\x08\x00\xa8\x00"
-CMD_BT_PASS_DEFAULT = b"HiLink"
-CMD_BT_PASS_POST = b"\x04\x03\x02\x01"
-CMD_ENABLE_CONFIG = b"\xfd\xfc\xfb\xfa\x04\x00\xff\x00\x01\x00\x04\x03\x02\x01"
-CMD_ENABLE_ENGINEERING_MODE = b"\xfd\xfc\xfb\xfa\x02\x00b\x00\x04\x03\x02\x01"
-CMD_DISABLE_CONFIG = b"\xfd\xfc\xfb\xfa\x02\x00\xfe\x00\x04\x03\x02\x01"
+CMD_PREAMBLE                =                b"\xfd\xfc\xfb\xfa"
+CMD_POSTAMBLE               =                b"\x04\x03\x02\x01"
+CMD_BT_PASS_PRE             = CMD_PREAMBLE + b"\x08\x00\xa8\x00"
+CMD_BT_PASS_DEFAULT         =                b"HiLink"
+CMD_BT_PASS_POST            = CMD_POSTAMBLE
+CMD_ENABLE_CONFIG           = CMD_PREAMBLE + b"\x04\x00\xff\x00\x01\x00" + CMD_POSTAMBLE
+CMD_ENABLE_ENGINEERING_MODE =                b"\x02\x00b\x00" + CMD_POSTAMBLE
+CMD_DISABLE_CONFIG          = CMD_PREAMBLE + b"\x02\x00\xfe" + CMD_POSTAMBLE
 
 MOVING_TARGET = 1
 STATIC_TARGET = 2
+
+MAX_GATES = 9
+MAX_SENSE_VAL = 100
+MIN_SENSE_VAL = 0
 
 frame_start = b"\xf4\xf3\xf2\xf1"
 frame_length = b"(?P<length>..)"
